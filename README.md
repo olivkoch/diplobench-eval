@@ -41,8 +41,36 @@ pip install -r requirements.txt
 cp .env.example .env   # then fill in the keys
 ```
 
-Mistral-family model names (`mistral-*`, `ministral-*`, `magistral-*`, ...) are sent to the Mistral
-API. Names with a vendor prefix (`openai/...`, `anthropic/...`) are sent to OpenRouter.
+Model names are routed by prefix:
+
+- `azure_ai/...`, `vertex_ai/...`, `mistral/...` go to the Mistral internal LiteLLM gateway
+  (`LITELLM_API_KEY`; list models with `GET https://internal-ai-gateway.mistralai.com/v1/models`).
+- Mistral-family names (`mistral-*`, `ministral-*`, `magistral-*`, ...) go to the Mistral API (`MISTRAL_API_KEY`).
+- Other names with a vendor prefix (`openai/...`, `anthropic/...`) go to OpenRouter (`OPENROUTER_API_KEY`).
+
+Appending `@<effort>` to a name sends `reasoning_effort=<effort>`, e.g. `mistral/zai-glm-5-2@high`.
+Reasoning text, whether it arrives as `reasoning_content` or as thinking blocks, is saved as `thinking` in
+`events.jsonl`.
+
+### League opponents on the gateway
+
+These league models are also served by the gateway. The effort settings were chosen by replaying league
+round-1 prompts and matching output length. Without them, GLM-5.2 and mistral-medium-3.5 don't reason on the
+gateway, although they did in the league. GPT and Claude need no setting: like in the league, they reason
+little or not at all by default.
+
+| League (rank) | Gateway spec |
+|---|---|
+| gpt-5.6-sol (1) | `azure_ai/gpt-5.6-sol` |
+| glm-5.2 (3) | `mistral/zai-glm-5-2@high` |
+| claude-opus-5 (5) | `vertex_ai/claude-opus-5` |
+| gpt-5.6-terra (8) | `azure_ai/gpt-5.6-terra` |
+| claude-sonnet-5 (15) | `vertex_ai/claude-sonnet-5` |
+| gpt-5.6-luna (22) | `azure_ai/gpt-5.6-luna` |
+| mistral-medium-3.5 (24) | `mistral/mistral-medium-3-5@medium` |
+
+On the gateway, Claude models don't always respect the strict schema (e.g. an array returned as a string).
+The schema retry handles this.
 
 ## Usage
 
@@ -53,6 +81,13 @@ python3 -m dbcom.run --out runs/t1 --default-model ministral-8b-latest \
 
 # Full game
 python3 -m dbcom.run --out runs/game1 --default-model ministral-8b-latest --model AUSTRIA=mistral-large-4
+
+# ML4 against league opponents, all through the gateway
+python3 -m dbcom.run --out runs/g1 \
+    --model AUSTRIA=mistral/mistral-large-4 --model ENGLAND=azure_ai/gpt-5.6-sol \
+    --model FRANCE=vertex_ai/claude-opus-5 --model GERMANY=mistral/zai-glm-5-2@high \
+    --model ITALY=azure_ai/gpt-5.6-terra --model RUSSIA=vertex_ai/claude-sonnet-5 \
+    --model TURKEY=mistral/mistral-medium-3-5@medium --stop-after S1901M
 ```
 
 Each run directory contains:

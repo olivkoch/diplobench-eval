@@ -1,8 +1,12 @@
 """Multi-turn chat client with strict JSON-schema output, 429 backoff and per-model call stats.
 
-Provider routing: Mistral-family names (mistral-*, ministral-*, magistral-*, codestral-*) go to the
-Mistral API with MISTRAL_API_KEY; names with a vendor prefix (e.g. "openai/gpt-5.6") go to OpenRouter
-with OPENROUTER_API_KEY.
+Provider routing: gateway names ("azure_ai/...", "vertex_ai/...", "mistral/...") go to the Mistral
+internal LiteLLM gateway with LITELLM_API_KEY; Mistral-family names (mistral-*, ministral-*, ...) go to
+the Mistral API with MISTRAL_API_KEY; other names with a vendor prefix (e.g. "openai/gpt-5.6") go to
+OpenRouter with OPENROUTER_API_KEY.
+
+A model spec may end with "@<effort>" (e.g. "mistral/zai-glm-5-2@high"), which sends
+reasoning_effort=<effort>. Stats are keyed by the full spec.
 """
 import logging
 import os
@@ -17,6 +21,8 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 logger = logging.getLogger(__name__)
 
+GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://internal-ai-gateway.mistralai.com/v1")
+GATEWAY_PREFIXES = ("azure_ai", "vertex_ai", "mistral")  # Mistral internal LiteLLM gateway (see GET /v1/models)
 MAX_TOKENS = 16000
 TIMEOUT = 300
 TRANSPORT_RETRIES = 10  # 429 / 5xx / timeouts, before the call counts as one failed attempt
@@ -38,7 +44,16 @@ def stats_summary():
             for m, s in sorted(_stats.items()))
 
 
+def parse_spec(spec):
+    """'name@effort' -> (name, effort); 'name' -> (name, None)."""
+    name, _, effort = spec.partition("@")
+    return name, effort or None
+
+
 def provider_for(model):
+    model = parse_spec(model)[0]
+    if model.split("/")[0] in GATEWAY_PREFIXES:
+        return GATEWAY_URL, os.getenv("LITELLM_API_KEY", "")
     if "/" in model:
         return "https://openrouter.ai/api/v1", os.getenv("OPENROUTER_API_KEY", "")
     if model.split("-")[0] in ("mistral", "ministral", "magistral", "codestral", "devstral"):
@@ -52,30 +67,36 @@ class BackendError(Exception):
         self.rate_limited = rate_limited
 
 
-def _split_content(content):
-    """Return (text, thinking). Reasoning models (e.g. mistral-large-4) return a list of blocks."""
+def _split_content(message):
+    """Return (text, thinking). The Mistral API returns reasoning as "thinking" content blocks;
+    the LiteLLM gateway returns it in message.reasoning_content."""
+    content = message.get("content")
+    text, thinking = [], [message.get("reasoning_content") or ""]
     if isinstance(content, str) or content is None:
-        return content or "", ""
-    text, thinking = [], []
-    for b in content:
-        if b.get("type") == "text":
-            text.append(b.get("text", ""))
-        elif b.get("type") == "thinking":
-            thinking.extend(t.get("text", "") for t in b.get("thinking", []) if isinstance(t, dict))
-    return "".join(text), "\n".join(thinking)
+        text.append(content or "")
+    else:
+        for b in content:
+            if b.get("type") == "text":
+                text.append(b.get("text", ""))
+            elif b.get("type") == "thinking":
+                thinking.extend(t.get("text", "") for t in b.get("thinking", []) if isinstance(t, dict))
+    return "".join(text), "\n".join(t for t in thinking if t)
 
 
 def chat(model, messages, schema_name, schema):
     """One completion. Retries transport errors with exponential backoff.
     Returns dict(text, thinking, usage, finish_reason, duration_s, http429_retries). Raises BackendError."""
     base_url, key = provider_for(model)
+    name, effort = parse_spec(model)
     payload = {
-        "model": model,
+        "model": name,
         "messages": messages,
         "max_tokens": MAX_TOKENS,
         "response_format": {"type": "json_schema",
                             "json_schema": {"name": schema_name, "schema": schema, "strict": True}},
     }
+    if effort:
+        payload["reasoning_effort"] = effort
     _bump(model, "calls")
     retries_429, last = 0, None
     t0 = time.time()
@@ -97,7 +118,7 @@ def chat(model, messages, schema_name, schema):
             else:
                 d = r.json()
                 choice = d["choices"][0]
-                text, thinking = _split_content(choice["message"].get("content"))
+                text, thinking = _split_content(choice["message"])
                 usage = d.get("usage") or {}
                 _bump(model, "prompt_tokens", usage.get("prompt_tokens", 0))
                 _bump(model, "completion_tokens", usage.get("completion_tokens", 0))

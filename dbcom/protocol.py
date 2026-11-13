@@ -25,17 +25,19 @@ def system_prompt(power):
 
 # ---------------------------------------------------------------- schemas
 
+# The schemas are the league's `responseSchema`s, verbatim (see verify_prompts.py). The message count/length
+# and recipient limits are not in the league's negotiation schema: they are only checked in parse_response.
+
 def negotiation_schema():
     return {
         "type": "object", "additionalProperties": False, "required": ["messages"],
         "properties": {"messages": {
-            "type": "array", "maxItems": MAX_MESSAGES,
+            "type": "array",
             "items": {
                 "type": "object", "additionalProperties": False, "required": ["recipients", "body"],
                 "properties": {
-                    "recipients": {"type": "array", "minItems": 1,
-                                   "items": {"type": "string", "enum": POWERS + ["GLOBAL"]}},
-                    "body": {"type": "string", "maxLength": MAX_MESSAGE_CHARS},
+                    "recipients": {"type": "array", "items": {"type": "string", "enum": POWERS + ["GLOBAL"]}},
+                    "body": {"type": "string"},
                 },
             },
         }},
@@ -46,14 +48,18 @@ def orders_schema():
     return {
         "type": "object", "additionalProperties": False, "required": ["orders", "draw_vote"],
         "properties": {"orders": {"type": "array", "items": {"type": "string"}},
-                       "draw_vote": {"type": "boolean"}},
+                       "draw_vote": {"type": "boolean",
+                                     "description": "Whether you vote to end the game now as an agreed stalemate."}},
     }
 
 
 def memory_schema():
     return {
         "type": "object", "additionalProperties": False, "required": ["private_summary"],
-        "properties": {"private_summary": {"type": "string", "maxLength": MAX_MEMORY_CHARS}},
+        "properties": {"private_summary": {
+            "type": "string", "maxLength": MAX_MEMORY_CHARS,
+            "description": "Complete private memory to carry into future seasons, including important commitments, "
+                           "relationships, betrayals, and plans."}},
     }
 
 
@@ -94,9 +100,23 @@ def _check_keys(obj, required, where="response"):
         raise ProtocolError(f"{where} has unknown keys: {', '.join(sorted(unknown))}")
 
 
+def _destringify(data, key):
+    """Claude on the gateway (LiteLLM turns response_format into a forced tool call) sometimes returns an
+    array field as a string holding the JSON array followed by junk, e.g. '[...]}\\n'. Decode it, as the
+    league's native structured output would never produce this."""
+    if isinstance(data.get(key), str):
+        try:
+            value = json.JSONDecoder(strict=False).raw_decode(data[key].strip())[0]
+        except json.JSONDecodeError:
+            return
+        if isinstance(value, list):
+            data[key] = value
+
+
 def parse_response(stage, text, power, surviving):
     """Validate a raw reply against the stage schema. Returns the parsed object or raises ProtocolError."""
     data = _extract_json(text)
+    _destringify(data, {"negotiation": "messages", "orders": "orders"}.get(stage, ""))
     if stage == "negotiation":
         _check_keys(data, ["messages"])
         msgs = data["messages"]

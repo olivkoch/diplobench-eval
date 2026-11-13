@@ -2,9 +2,11 @@
 
   python3 -m dbcom.run --out runs/test1 --default-model ministral-8b-latest \
       --model AUSTRIA=mistral-large-4 --stop-after S1901M
+  python3 -m dbcom.run --out runs/test1 ... --resume   # continue an interrupted game
 """
 import argparse
 import logging
+import os
 
 from . import protocol as P
 from .game import Runner
@@ -16,6 +18,7 @@ def main():
     ap.add_argument("--default-model", default="ministral-8b-latest")
     ap.add_argument("--model", action="append", default=[], help="POWER=model, repeatable")
     ap.add_argument("--stop-after", help="stop after this phase id, e.g. S1901M (for short tests)")
+    ap.add_argument("--resume", action="store_true", help="continue the game saved in --out")
     args = ap.parse_args()
 
     models = {p: args.default_model for p in P.POWERS}
@@ -24,10 +27,11 @@ def main():
         assert power in P.POWERS, power
         models[power] = model
 
-    runner = Runner(models, args.out, stop_after=args.stop_after)
+    os.makedirs(args.out, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         handlers=[logging.StreamHandler(), logging.FileHandler(f"{args.out}/run.log")])
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    runner = Runner(models, args.out, stop_after=args.stop_after, resume=args.resume)
     print(runner.run())
 
 

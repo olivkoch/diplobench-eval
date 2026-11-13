@@ -14,7 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from diplomacy import Game
-from diplomacy.utils.export import to_saved_game_format
+from diplomacy.utils.export import from_saved_game_format, to_saved_game_format
 
 from . import client
 from . import protocol as P
@@ -25,8 +25,10 @@ SOLO_CENTERS = 18
 
 
 class Runner:
-    def __init__(self, models, out_dir, stop_after=None):
-        """models: {POWER: model_name}. stop_after: phase id (e.g. 'S1901M') after which to stop, for tests."""
+    def __init__(self, models, out_dir, stop_after=None, resume=False):
+        """models: {POWER: model_name}. stop_after: phase id (e.g. 'S1901M') after which to stop, for tests.
+        resume: continue from the last completed phase saved in out_dir (game.json + memory.json); a phase
+        interrupted midway is replayed from its start."""
         self.models = models
         self.out_dir = out_dir
         self.stop_after = stop_after
@@ -34,10 +36,28 @@ class Runner:
         self.memory = {p: None for p in P.POWERS}
         self.convs = {}
         self.result = None
+        self.spend = 0.0  # USD reported by the gateway
+        self.agent_failures = 0
         self._events_lock = threading.Lock()
         os.makedirs(out_dir, exist_ok=True)
+        game_file = os.path.join(out_dir, "game.json")
+        if resume and os.path.exists(game_file):
+            with open(game_file) as f:
+                self.game = from_saved_game_format(json.load(f))
+            with open(os.path.join(out_dir, "memory.json")) as f:
+                self.memory = json.load(f)
+            with open(os.path.join(out_dir, "events.jsonl")) as f:
+                for line in f:
+                    ev = json.loads(line)
+                    if ev["type"] == "request":
+                        self.spend += sum((a.get("usage") or {}).get("cost") or 0 for a in ev["attempts"])
+                        self.agent_failures += ev["accepted"] is None
         self._events = open(os.path.join(out_dir, "events.jsonl"), "a")
-        self._log_event({"type": "game_start", "models": models})
+        if resume and os.path.exists(game_file):
+            self._log_event({"type": "resume", "phase": self.game.get_current_phase(), "models": models})
+            logger.info(f"RESUME at {self.game.get_current_phase()} (spend so far ${self.spend:.2f})")
+        else:
+            self._log_event({"type": "game_start", "models": models})
 
     # ------------------------------------------------------------ plumbing
 
@@ -47,11 +67,23 @@ class Runner:
             self._events.write(json.dumps(ev) + "\n")
             self._events.flush()
 
+    def _write(self, name, obj, **kw):
+        """Write atomically, so that a kill mid-write never leaves a truncated file for --resume."""
+        path = os.path.join(self.out_dir, name)
+        with open(path + ".tmp", "w") as f:
+            json.dump(obj, f, **kw)
+        os.replace(path + ".tmp", path)
+
     def _save(self):
-        with open(os.path.join(self.out_dir, "game.json"), "w") as f:
-            json.dump(to_saved_game_format(self.game), f)
-        with open(os.path.join(self.out_dir, "memory.json"), "w") as f:
-            json.dump(self.memory, f, indent=1)
+        # memory first: a kill between the two writes then replays the phase with its memory already updated,
+        # rather than skipping the memory update
+        self._write("memory.json", self.memory, indent=1)
+        self._write("game.json", to_saved_game_format(self.game))
+        self._write("progress.json", {
+            "t": round(time.time()), "phase": self.game.get_current_phase(), "models": self.models,
+            "centers": {p: len(self.game.get_centers(p)) for p in P.POWERS},
+            "units": {p: len(self.game.get_units(p)) for p in P.POWERS},
+            "spend_usd": round(self.spend, 2), "agent_failures": self.agent_failures, "result": self.result})
 
     def surviving(self):
         return [p for p in P.POWERS if not self.game.get_power(p).is_eliminated()]
@@ -72,6 +104,7 @@ class Runner:
             rec = {"attempt": attempt}
             try:
                 resp = client.chat(model, conv + scratch, schema_stage, P.SCHEMAS[schema_stage]())
+                self.spend += resp["usage"].get("cost") or 0
                 rec.update(raw=resp["text"], thinking=resp["thinking"], usage=resp["usage"],
                            finish_reason=resp["finish_reason"], duration_s=resp["duration_s"],
                            http429_retries=resp["http429_retries"])
@@ -80,7 +113,10 @@ class Runner:
                 data = P.parse_response(schema_stage, resp["text"], power, self.surviving())
                 rec["ok"] = True
                 attempts.append(rec)
-                conv.append({"role": "assistant", "content": resp["text"]})
+                # if parse_response repaired the reply (stringified array), keep the repaired JSON
+                repaired = P._extract_json(resp["text"]) != data
+                conv.append({"role": "assistant",
+                             "content": json.dumps(data, ensure_ascii=False) if repaired else resp["text"]})
                 break
             except P.ProtocolError as e:
                 rec.update(ok=False, failure_kind="response_validation", error=f"ProtocolError: {e}")
@@ -92,6 +128,7 @@ class Runner:
             attempts.append(rec)
             logger.warning(f"{phase} {power} {stage}: attempt {attempt} failed: {rec['error'][:200]}")
         if data is None:
+            self.agent_failures += 1
             # Keep user/assistant alternation; the player simply says/does nothing this step.
             conv.append({"role": "assistant", "content": json.dumps(
                 {"negotiation": {"messages": []}, "memory": {"private_summary": self.memory[power] or ""}}
@@ -225,14 +262,16 @@ class Runner:
             centers = {p: len(game.get_centers(p)) for p in P.POWERS}
             logger.info(f"DONE {phase} in {time.time() - t0:.0f}s -> now {game.get_current_phase()} | SCs "
                         + " ".join(f"{p[:3]}={c}" for p, c in centers.items()))
-            logger.info(f"LLM_STATS {client.stats_summary()}")
+            logger.info(f"LLM_STATS spend=${self.spend:.2f} agent_failures={self.agent_failures} | {client.stats_summary()}")
             solo = [p for p, c in centers.items() if c >= SOLO_CENTERS]
             if solo:
                 self.result = {"reason": "solo", "winner": solo[0], "phase": game.get_current_phase()}
             elif self.stop_after and phase == self.stop_after:
                 self.result = {"reason": f"stopped after {phase} (test run)", "phase": game.get_current_phase()}
         self.result["centers"] = {p: len(game.get_centers(p)) for p in P.POWERS}
+        self.result.update(spend_usd=round(self.spend, 2), agent_failures=self.agent_failures)
         self._log_event({"type": "game_end", **self.result})
         self._save()
+        self._write("result.json", {"models": self.models, **self.result}, indent=1)
         logger.info(f"GAME_END {json.dumps(self.result)}")
         return self.result

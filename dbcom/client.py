@@ -23,9 +23,17 @@ logger = logging.getLogger(__name__)
 
 GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://internal-ai-gateway.mistralai.com/v1")
 GATEWAY_PREFIXES = ("azure_ai", "vertex_ai", "mistral")  # Mistral internal LiteLLM gateway (see GET /v1/models)
-MAX_TOKENS = 16000
-TIMEOUT = 300
-TRANSPORT_RETRIES = 10  # 429 / 5xx / timeouts, before the call counts as one failed attempt
+# The league had no 16000 cap (its traces include replies of 55087 completion tokens with finish "stop"), but
+# campaign c1 used 16000. DBCOM_MAX_TOKENS=none omits max_tokens (provider default).
+_max_tokens = os.getenv("DBCOM_MAX_TOKENS", "16000")
+MAX_TOKENS = None if _max_tokens.lower() in ("none", "0", "") else int(_max_tokens)
+TIMEOUT = 900  # mistral-large-4 can take ~280 s for a 16k-token reply
+# Before a call counts as one failed attempt: transient errors (429, 502/503/504/529, timeouts, connection
+# errors, e.g. the gateway being unreachable) are retried for up to OUTAGE_WAIT_S, so that an outage pauses
+# the game instead of making players lose their turn; other 5xx are retried TRANSPORT_RETRIES times.
+OUTAGE_WAIT_S = 3600
+TRANSPORT_RETRIES = 10
+TRANSIENT_STATUS = (429, 502, 503, 504, 529)
 
 _stats_lock = threading.Lock()
 _stats = defaultdict(lambda: defaultdict(int))
@@ -40,7 +48,8 @@ def stats_summary():
     with _stats_lock:
         return "; ".join(
             f"{m}: calls={s['calls']} 429s={s['rate_limited']} failed={s['failed']} "
-            f"failed_rate_limit={s['failed_rate_limit']} tokens_in={s['prompt_tokens']} tokens_out={s['completion_tokens']}"
+            f"failed_rate_limit={s['failed_rate_limit']} tokens_in={s['prompt_tokens']} tokens_out={s['completion_tokens']} "
+            f"cost=${s['cost_microusd'] / 1e6:.2f}"
             for m, s in sorted(_stats.items()))
 
 
@@ -91,16 +100,23 @@ def chat(model, messages, schema_name, schema):
     payload = {
         "model": name,
         "messages": messages,
-        "max_tokens": MAX_TOKENS,
         "response_format": {"type": "json_schema",
                             "json_schema": {"name": schema_name, "schema": schema, "strict": True}},
     }
+    if MAX_TOKENS:
+        payload["max_tokens"] = MAX_TOKENS
     if effort:
         payload["reasoning_effort"] = effort
+    if base_url == GATEWAY_URL:
+        # the gateway caches some models (mistral-large-4): an identical request, e.g. a retry after an empty
+        # reply, would get the identical reply back
+        payload["cache"] = {"no-cache": True}
     _bump(model, "calls")
-    retries_429, last = 0, None
+    retries_429, other_errors, last = 0, 0, None
     t0 = time.time()
-    for attempt in range(1, TRANSPORT_RETRIES + 1):
+    attempt = 0
+    while True:
+        attempt += 1
         retry_after = None
         try:
             r = requests.post(f"{base_url}/chat/completions", json=payload, timeout=TIMEOUT,
@@ -109,6 +125,8 @@ def chat(model, messages, schema_name, schema):
                 if r.status_code == 429:
                     retries_429 += 1
                     _bump(model, "rate_limited")
+                if r.status_code not in TRANSIENT_STATUS:
+                    other_errors += 1
                 last = BackendError(f"HTTP {r.status_code}: {r.text[:200]}", rate_limited=r.status_code == 429)
                 retry_after = r.headers.get("Retry-After")
             elif r.status_code != 200:
@@ -120,23 +138,32 @@ def chat(model, messages, schema_name, schema):
                 choice = d["choices"][0]
                 text, thinking = _split_content(choice["message"])
                 usage = d.get("usage") or {}
-                _bump(model, "prompt_tokens", usage.get("prompt_tokens", 0))
-                _bump(model, "completion_tokens", usage.get("completion_tokens", 0))
+                if r.headers.get("x-litellm-response-cost"):  # gateway only; USD
+                    usage["cost"] = float(r.headers["x-litellm-response-cost"])
+                    _bump(model, "cost_microusd", round(usage["cost"] * 1e6))
+                _bump(model, "prompt_tokens", usage.get("prompt_tokens") or 0)
+                _bump(model, "completion_tokens", usage.get("completion_tokens") or 0)
                 return {"text": text, "thinking": thinking, "usage": usage,
                         "finish_reason": choice.get("finish_reason"),
                         "duration_s": round(time.time() - t0, 1), "http429_retries": retries_429}
         except (requests.Timeout, requests.ConnectionError) as e:
             last = BackendError(f"{type(e).__name__}: {e}")
-        if attempt < TRANSPORT_RETRIES:
-            # 5, 10, 20, 40, 60, 60... seconds with jitter so parallel players don't retry in lockstep
-            delay = min(60, 5 * 2 ** (attempt - 1)) + random.uniform(0, 3)
-            try:
-                delay = max(delay, float(retry_after)) if retry_after else delay
-            except ValueError:
-                pass
-            time.sleep(delay)
+        except (ValueError, KeyError, IndexError) as e:  # 200 with a malformed body
+            other_errors += 1
+            last = BackendError(f"bad response body: {type(e).__name__}: {e}")
+        if other_errors >= TRANSPORT_RETRIES or time.time() - t0 > OUTAGE_WAIT_S:
+            break
+        # 5, 10, 20, 40, 60, 60... seconds with jitter so parallel players don't retry in lockstep
+        delay = min(60, 5 * 2 ** min(attempt - 1, 4)) + random.uniform(0, 3)
+        try:
+            delay = max(delay, min(300, float(retry_after))) if retry_after else delay
+        except ValueError:
+            pass
+        if attempt % 10 == 0:
+            logger.warning(f"model={model} still retrying after {time.time() - t0:.0f}s: {last}")
+        time.sleep(delay)
     _bump(model, "failed")
     if last is not None and last.rate_limited:
         _bump(model, "failed_rate_limit")
-    logger.error(f"LLM_CALL_FAILED model={model} after {TRANSPORT_RETRIES} transport attempts: {last} | {stats_summary()}")
+    logger.error(f"LLM_CALL_FAILED model={model} after {attempt} transport attempts / {time.time() - t0:.0f}s: {last} | {stats_summary()}")
     raise last

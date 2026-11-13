@@ -31,6 +31,9 @@ for ph in phases:
         req = P.required_orders(game, power, legal)
         for tr in trs:
             st, rnd, theirs = tr["stage"], tr["round"], tr["request"]["userPrompt"]
+            schema = P.SCHEMAS[{"negotiation": "negotiation", "memory": "memory"}.get(st, "orders")]()
+            check(f"{ph} {power} {st} r{rnd} schema", json.dumps(schema, indent=1, sort_keys=True),
+                  json.dumps(tr["request"]["responseSchema"], indent=1, sort_keys=True))
             vis = lambda r: [dict(m, seq=i) for i, m in enumerate(pdata["messages"]) if m["round"] == r and
                              (m["sender"] == power or power in m["recipients"] or "GLOBAL" in m["recipients"])]
             if st == "negotiation" and rnd == 1:

@@ -4,6 +4,8 @@ A reimplementation of the [DiploBench](https://diplobench.com) game protocol (to
 `openrouter-38-v2`), used to evaluate models such as `mistral-large-4` at Diplomacy under the same
 conditions as the DiploBench league.
 
+Results: [campaign c1](results/c1/README.md), 21 games of mistral-large-4 against six league models.
+
 ## Protocol
 
 Adjudication is done by [python-diplomacy](https://github.com/diplomacy/diplomacy).

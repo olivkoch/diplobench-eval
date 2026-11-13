@@ -1,0 +1,203 @@
+{
+ "models": [
+  "mistral/mistral-large-4",
+  "azure_ai/gpt-5.6-sol",
+  "mistral/zai-glm-5-2@high",
+  "vertex_ai/claude-opus-5",
+  "azure_ai/gpt-5.6-terra",
+  "vertex_ai/claude-sonnet-5",
+  "mistral/mistral-medium-3-5@medium"
+ ],
+ "lineups": [
+  {
+   "AUSTRIA": "mistral/mistral-large-4",
+   "ENGLAND": "azure_ai/gpt-5.6-sol",
+   "FRANCE": "mistral/zai-glm-5-2@high",
+   "GERMANY": "vertex_ai/claude-opus-5",
+   "ITALY": "azure_ai/gpt-5.6-terra",
+   "RUSSIA": "vertex_ai/claude-sonnet-5",
+   "TURKEY": "mistral/mistral-medium-3-5@medium"
+  },
+  {
+   "AUSTRIA": "mistral/mistral-medium-3-5@medium",
+   "ENGLAND": "mistral/mistral-large-4",
+   "FRANCE": "azure_ai/gpt-5.6-sol",
+   "GERMANY": "mistral/zai-glm-5-2@high",
+   "ITALY": "vertex_ai/claude-opus-5",
+   "RUSSIA": "azure_ai/gpt-5.6-terra",
+   "TURKEY": "vertex_ai/claude-sonnet-5"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-sonnet-5",
+   "ENGLAND": "mistral/mistral-medium-3-5@medium",
+   "FRANCE": "mistral/mistral-large-4",
+   "GERMANY": "azure_ai/gpt-5.6-sol",
+   "ITALY": "mistral/zai-glm-5-2@high",
+   "RUSSIA": "vertex_ai/claude-opus-5",
+   "TURKEY": "azure_ai/gpt-5.6-terra"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-terra",
+   "ENGLAND": "vertex_ai/claude-sonnet-5",
+   "FRANCE": "mistral/mistral-medium-3-5@medium",
+   "GERMANY": "mistral/mistral-large-4",
+   "ITALY": "azure_ai/gpt-5.6-sol",
+   "RUSSIA": "mistral/zai-glm-5-2@high",
+   "TURKEY": "vertex_ai/claude-opus-5"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-opus-5",
+   "ENGLAND": "azure_ai/gpt-5.6-terra",
+   "FRANCE": "vertex_ai/claude-sonnet-5",
+   "GERMANY": "mistral/mistral-medium-3-5@medium",
+   "ITALY": "mistral/mistral-large-4",
+   "RUSSIA": "azure_ai/gpt-5.6-sol",
+   "TURKEY": "mistral/zai-glm-5-2@high"
+  },
+  {
+   "AUSTRIA": "mistral/zai-glm-5-2@high",
+   "ENGLAND": "vertex_ai/claude-opus-5",
+   "FRANCE": "azure_ai/gpt-5.6-terra",
+   "GERMANY": "vertex_ai/claude-sonnet-5",
+   "ITALY": "mistral/mistral-medium-3-5@medium",
+   "RUSSIA": "mistral/mistral-large-4",
+   "TURKEY": "azure_ai/gpt-5.6-sol"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-sol",
+   "ENGLAND": "mistral/zai-glm-5-2@high",
+   "FRANCE": "vertex_ai/claude-opus-5",
+   "GERMANY": "azure_ai/gpt-5.6-terra",
+   "ITALY": "vertex_ai/claude-sonnet-5",
+   "RUSSIA": "mistral/mistral-medium-3-5@medium",
+   "TURKEY": "mistral/mistral-large-4"
+  },
+  {
+   "AUSTRIA": "mistral/mistral-large-4",
+   "ENGLAND": "vertex_ai/claude-opus-5",
+   "FRANCE": "mistral/mistral-medium-3-5@medium",
+   "GERMANY": "mistral/zai-glm-5-2@high",
+   "ITALY": "vertex_ai/claude-sonnet-5",
+   "RUSSIA": "azure_ai/gpt-5.6-sol",
+   "TURKEY": "azure_ai/gpt-5.6-terra"
+  },
+  {
+   "AUSTRIA": "mistral/mistral-medium-3-5@medium",
+   "ENGLAND": "mistral/zai-glm-5-2@high",
+   "FRANCE": "vertex_ai/claude-sonnet-5",
+   "GERMANY": "azure_ai/gpt-5.6-sol",
+   "ITALY": "azure_ai/gpt-5.6-terra",
+   "RUSSIA": "mistral/mistral-large-4",
+   "TURKEY": "vertex_ai/claude-opus-5"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-sonnet-5",
+   "ENGLAND": "azure_ai/gpt-5.6-sol",
+   "FRANCE": "azure_ai/gpt-5.6-terra",
+   "GERMANY": "mistral/mistral-large-4",
+   "ITALY": "vertex_ai/claude-opus-5",
+   "RUSSIA": "mistral/mistral-medium-3-5@medium",
+   "TURKEY": "mistral/zai-glm-5-2@high"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-terra",
+   "ENGLAND": "mistral/mistral-large-4",
+   "FRANCE": "vertex_ai/claude-opus-5",
+   "GERMANY": "mistral/mistral-medium-3-5@medium",
+   "ITALY": "mistral/zai-glm-5-2@high",
+   "RUSSIA": "vertex_ai/claude-sonnet-5",
+   "TURKEY": "azure_ai/gpt-5.6-sol"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-opus-5",
+   "ENGLAND": "mistral/mistral-medium-3-5@medium",
+   "FRANCE": "mistral/zai-glm-5-2@high",
+   "GERMANY": "vertex_ai/claude-sonnet-5",
+   "ITALY": "azure_ai/gpt-5.6-sol",
+   "RUSSIA": "azure_ai/gpt-5.6-terra",
+   "TURKEY": "mistral/mistral-large-4"
+  },
+  {
+   "AUSTRIA": "mistral/zai-glm-5-2@high",
+   "ENGLAND": "vertex_ai/claude-sonnet-5",
+   "FRANCE": "azure_ai/gpt-5.6-sol",
+   "GERMANY": "azure_ai/gpt-5.6-terra",
+   "ITALY": "mistral/mistral-large-4",
+   "RUSSIA": "vertex_ai/claude-opus-5",
+   "TURKEY": "mistral/mistral-medium-3-5@medium"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-sol",
+   "ENGLAND": "azure_ai/gpt-5.6-terra",
+   "FRANCE": "mistral/mistral-large-4",
+   "GERMANY": "vertex_ai/claude-opus-5",
+   "ITALY": "mistral/mistral-medium-3-5@medium",
+   "RUSSIA": "mistral/zai-glm-5-2@high",
+   "TURKEY": "vertex_ai/claude-sonnet-5"
+  },
+  {
+   "AUSTRIA": "mistral/mistral-large-4",
+   "ENGLAND": "mistral/zai-glm-5-2@high",
+   "FRANCE": "azure_ai/gpt-5.6-terra",
+   "GERMANY": "mistral/mistral-medium-3-5@medium",
+   "ITALY": "azure_ai/gpt-5.6-sol",
+   "RUSSIA": "vertex_ai/claude-opus-5",
+   "TURKEY": "vertex_ai/claude-sonnet-5"
+  },
+  {
+   "AUSTRIA": "mistral/mistral-medium-3-5@medium",
+   "ENGLAND": "azure_ai/gpt-5.6-sol",
+   "FRANCE": "vertex_ai/claude-opus-5",
+   "GERMANY": "vertex_ai/claude-sonnet-5",
+   "ITALY": "mistral/mistral-large-4",
+   "RUSSIA": "mistral/zai-glm-5-2@high",
+   "TURKEY": "azure_ai/gpt-5.6-terra"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-sonnet-5",
+   "ENGLAND": "mistral/mistral-large-4",
+   "FRANCE": "mistral/zai-glm-5-2@high",
+   "GERMANY": "azure_ai/gpt-5.6-terra",
+   "ITALY": "mistral/mistral-medium-3-5@medium",
+   "RUSSIA": "azure_ai/gpt-5.6-sol",
+   "TURKEY": "vertex_ai/claude-opus-5"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-terra",
+   "ENGLAND": "mistral/mistral-medium-3-5@medium",
+   "FRANCE": "azure_ai/gpt-5.6-sol",
+   "GERMANY": "vertex_ai/claude-opus-5",
+   "ITALY": "vertex_ai/claude-sonnet-5",
+   "RUSSIA": "mistral/mistral-large-4",
+   "TURKEY": "mistral/zai-glm-5-2@high"
+  },
+  {
+   "AUSTRIA": "vertex_ai/claude-opus-5",
+   "ENGLAND": "vertex_ai/claude-sonnet-5",
+   "FRANCE": "mistral/mistral-large-4",
+   "GERMANY": "mistral/zai-glm-5-2@high",
+   "ITALY": "azure_ai/gpt-5.6-terra",
+   "RUSSIA": "mistral/mistral-medium-3-5@medium",
+   "TURKEY": "azure_ai/gpt-5.6-sol"
+  },
+  {
+   "AUSTRIA": "mistral/zai-glm-5-2@high",
+   "ENGLAND": "azure_ai/gpt-5.6-terra",
+   "FRANCE": "mistral/mistral-medium-3-5@medium",
+   "GERMANY": "azure_ai/gpt-5.6-sol",
+   "ITALY": "vertex_ai/claude-opus-5",
+   "RUSSIA": "vertex_ai/claude-sonnet-5",
+   "TURKEY": "mistral/mistral-large-4"
+  },
+  {
+   "AUSTRIA": "azure_ai/gpt-5.6-sol",
+   "ENGLAND": "vertex_ai/claude-opus-5",
+   "FRANCE": "vertex_ai/claude-sonnet-5",
+   "GERMANY": "mistral/mistral-large-4",
+   "ITALY": "mistral/zai-glm-5-2@high",
+   "RUSSIA": "azure_ai/gpt-5.6-terra",
+   "TURKEY": "mistral/mistral-medium-3-5@medium"
+  }
+ ],
+ "stop_after": null
+}

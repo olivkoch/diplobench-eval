@@ -1,0 +1,8 @@
+model,requests,attempts,agent_failures,truncated_attempts,prompt_tokens,completion_tokens,cost_usd,agent_failures_adjustment,agent_failures_memory,agent_failures_negotiation
+gpt-5.6-sol,4419,4427,1,2,41942798,5320412,242.13,0,0,1
+claude-opus-5,4362,6989,217,0,173170967,14517249,921.97,0,217,0
+gpt-5.6-terra,4216,4225,1,0,37020290,3146948,96.87,0,0,1
+zai-glm-5-2@high,4229,4673,9,373,46392319,25183866,131.23,6,0,3
+mistral-large-4,3994,4360,0,325,42184195,23433308,0.0,0,0,0
+claude-sonnet-5,4058,5306,46,0,83351071,5640560,187.96,0,46,0
+mistral-medium-3-5@medium,3470,3524,0,52,26368291,16405367,147.87,0,0,0

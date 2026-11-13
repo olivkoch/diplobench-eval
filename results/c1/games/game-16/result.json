@@ -1,0 +1,24 @@
+{
+ "models": {
+  "AUSTRIA": "vertex_ai/claude-sonnet-5",
+  "ENGLAND": "mistral/mistral-large-4",
+  "FRANCE": "mistral/zai-glm-5-2@high",
+  "GERMANY": "azure_ai/gpt-5.6-terra",
+  "ITALY": "mistral/mistral-medium-3-5@medium",
+  "RUSSIA": "azure_ai/gpt-5.6-sol",
+  "TURKEY": "vertex_ai/claude-opus-5"
+ },
+ "reason": "cutoff",
+ "phase": "S1921M",
+ "centers": {
+  "AUSTRIA": 4,
+  "ENGLAND": 6,
+  "FRANCE": 3,
+  "GERMANY": 5,
+  "ITALY": 1,
+  "RUSSIA": 7,
+  "TURKEY": 8
+ },
+ "spend_usd": 85.45,
+ "agent_failures": 8
+}

@@ -1,0 +1,23 @@
+2026-11-11 10:57:00  spend $1728.02 / budget $1700
+game     state    phase     focus power  focus SC  SCs (A E F G I R T)      spend fails restarts  result
+game-00  done     S1921M    AUSTRIA             6   6  3  5  5  5  6  4   $ 84.01    11        0  cutoff
+game-01  done     S1921M    ENGLAND             5   0  5  6  3  8  8  4   $ 84.90    18        0  cutoff
+game-02  done     F1920M    FRANCE              0   5  4  0  8  6  6  5   $ 83.97    10        0  stalemate_vote
+game-03  done     S1921M    GERMANY             6   0  7  3  6  7  4  7   $ 83.51    10        0  cutoff
+game-04  done     S1921M    ITALY               4   7  9  4  0  4  7  3   $ 82.31    19        0  cutoff
+game-05  done     S1920M    RUSSIA              6   4  6  6  3  4  6  5   $ 89.27    30        0  stalemate_vote
+game-06  done     S1921M    TURKEY              2   8  7  6  4  6  1  2   $ 86.18    20        0  cutoff
+game-07  done     S1921M    AUSTRIA             5   5 10  2  0  1 10  6   $ 81.68     7        0  cutoff
+game-08  done     S1921M    RUSSIA              3   0  0  0 17  6  3  8   $ 71.21     9        0  cutoff
+game-09  done     S1921M    GERMANY             2   0 11  4  2 12  3  2   $ 83.56     7        0  cutoff
+game-10  done     S1921M    ENGLAND             9   2  9  7  1  3  1 11   $ 85.81    12        0  cutoff
+game-11  done     S1921M    TURKEY              0   6  0  5  5  9  9  0   $ 81.64    15        0  cutoff
+game-12  done     S1921M    ITALY               5   0  5  7  5  5 12  0   $ 78.09    14        0  cutoff
+game-13  done     S1921M    FRANCE              3   5  9  3  6  0  6  5   $ 78.84     2        0  cutoff
+game-14  done     COMPLETED AUSTRIA             0   0 10  1  0 18  5  0   $ 75.68    11        0  solo
+game-15  done     S1921M    ITALY               7   0 11  6  0  7  5  5   $ 75.59    18        0  cutoff
+game-16  done     S1921M    ENGLAND             6   4  6  3  5  1  7  8   $ 85.45     8        0  cutoff
+game-17  done     S1921M    RUSSIA              5   4  5  6  6  4  5  4   $ 92.14    19        0  cutoff
+game-18  done     F1920M    FRANCE              5   6  7  5  4  5  1  6   $ 84.91    10        0  stalemate_vote
+game-19  done     F1920M    TURKEY              1   8  5  2  7 11  0  1   $ 83.64    10        0  stalemate_vote
+game-20  done     S1921M    GERMANY             2   9 10  2  2  3  8  0   $ 75.63    14        0  cutoff
